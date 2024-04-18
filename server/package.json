@@ -30,6 +30,6 @@
     "chai-http": "^4.3.0",
     "dotenv-cli": "^5.1.0",
     "mocha": "^10.2.0",
-    "nodemon": "^2.0.15"
+    "nodemon": "^3.1.0"
   }
 }

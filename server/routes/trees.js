@@ -6,6 +6,7 @@ const router = express.Router();
  * BASIC PHASE 1, Step A - Import model
  */
 // Your code here
+const { Tree } = require("../db/models");
 
 /**
  * INTERMEDIATE BONUS PHASE 1 (OPTIONAL), Step A:
@@ -24,9 +25,14 @@ const router = express.Router();
  *   - Ordered by the heightFt from tallest to shortest
  */
 router.get('/', async (req, res, next) => {
-    let trees = [];
+   
 
     // Your code here
+   let trees = await Tree.findAll({
+        attributes: ['heightFt','tree','id'],
+        order: [['heightFt','DESC']]
+
+    })
 
     res.json(trees);
 });
@@ -45,6 +51,7 @@ router.get('/:id', async (req, res, next) => {
 
     try {
         // Your code here
+        tree = await Tree.findByPk(req.params.id)
 
         if (tree) {
             res.json(tree);
@@ -82,9 +89,20 @@ router.get('/:id', async (req, res, next) => {
  */
 router.post('/', async (req, res, next) => {
     try {
+        const {name, location, height, size } = req.body 
+        const newTree = await Tree.create({
+            tree: name,
+            location,
+            heightFt: height,
+            groundCircumferenceFt: size
+        
+        })
+       
+        
         res.json({
             status: "success",
             message: "Successfully created new tree",
+            data: newTree
         });
     } catch(err) {
         next({
@@ -117,6 +135,17 @@ router.post('/', async (req, res, next) => {
  */
 router.delete('/:id', async (req, res, next) => {
     try {
+        let tree = await Tree.findByPk(req.params.id);
+        console.log(tree)
+        if(!tree) {
+            next( {
+                status: "not-found",
+                message: `Could not remove tree ${req.params.id}`,
+                details: `Tree not found`
+            }
+        );
+        }
+        await tree.destroy()
         res.json({
             status: "success",
             message: `Successfully removed tree ${req.params.id}`,
@@ -167,10 +196,44 @@ router.delete('/:id', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
     try {
         // Your code here
-    } catch(err) {
+        const { id, name, location, height, size } = req.body;
+        if (Number(req.params.id) !== Number(id)) {
+            const error = {
+                response: 'Could not update tree',
+                message: `${req.params.id} does not match ${id}`
+            }
+            throw error;
+        }
+
+        const tree = await Tree.findOne({
+            where: { id }
+        });
+        if (tree) {
+            tree.set({
+                tree: name || tree.name,
+                location: location || tree.location,
+                heightFt: height || tree.heightFt,
+                groundCircumferenceFt: size || tree.groundCircumferenceFt
+            });
+            await tree.save();
+
+            res.json({
+                status: 'success',
+                message: 'Successfully updated tree',
+                data: tree
+            })
+        } else {
+            const error = {
+                status: 'not-found',
+                response: `Could not update tree ${id}`,
+                message: 'Tree not found'
+            }
+            throw error;
+        }
+    } catch (err) {
         next({
-            status: "error",
-            message: 'Could not update new tree',
+            status: err.status ? err.status : "error",
+            message: err.response ? err.response : 'Could not update new tree',
             details: err.errors ? err.errors.map(item => item.message).join(', ') : err.message
         });
     }
