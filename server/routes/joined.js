@@ -21,9 +21,20 @@ const { Op } = require("sequelize");
  */
 router.get('/trees-insects', async (req, res, next) => {
     let trees = [];
+    
 
     trees = await Tree.findAll({
         attributes: ['id', 'tree', 'location', 'heightFt'],
+        include: {
+            attributes: ['id','name'],
+            model: Insect,
+            required: true,
+            through: {
+                attributes: []
+            },
+           
+        },
+        order: [['id'],[Insect, 'name']]
     });
 
     res.json(trees);
@@ -51,10 +62,18 @@ router.get('/insects-trees', async (req, res, next) => {
     });
     for (let i = 0; i < insects.length; i++) {
         const insect = insects[i];
+        
+        const insectTrees = await insect.getTrees({
+            attributes: ['id', 'tree'],
+            order: [['tree', 'asc']],
+            joinTableAttributes: []
+           // remove extra data
+        });   
         payload.push({
             id: insect.id,
             name: insect.name,
             description: insect.description,
+            trees: insectTrees //insectTreesForOutput 
         });
     }
 
