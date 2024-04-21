@@ -7,7 +7,7 @@ const router = express.Router();
  */
 // Your code here
 const { Tree } = require("../db/models");
-
+const {Sequelize, Op } = require("sequelize")
 /**
  * INTERMEDIATE BONUS PHASE 1 (OPTIONAL), Step A:
  *   Import Op to perform comparison operations in WHERE clauses
@@ -196,44 +196,42 @@ router.delete('/:id', async (req, res, next) => {
 router.put('/:id', async (req, res, next) => {
     try {
         // Your code here
-        const { id, name, location, height, size } = req.body;
-        if (Number(req.params.id) !== Number(id)) {
-            const error = {
-                response: 'Could not update tree',
-                message: `${req.params.id} does not match ${id}`
-            }
-            throw error;
-        }
+     const {id, name, location, height, size} = req.body;
+     const tree = await Tree.findByPk(req.params.id);
 
-        const tree = await Tree.findOne({
-            where: { id }
-        });
-        if (tree) {
-            tree.set({
-                tree: name || tree.name,
-                location: location || tree.location,
-                heightFt: height || tree.heightFt,
-                groundCircumferenceFt: size || tree.groundCircumferenceFt
-            });
-            await tree.save();
+     if(!tree) {
+         next({
+             status: "not-found",
+             message: `Could not update tree ${req.params.id}`,
+             details: `Tree not found`
 
-            res.json({
-                status: 'success',
-                message: 'Successfully updated tree',
-                data: tree
-            })
-        } else {
-            const error = {
-                status: 'not-found',
-                response: `Could not update tree ${id}`,
-                message: 'Tree not found'
-            }
-            throw error;
-        }
-    } catch (err) {
+         });
+         return;
+     }
+     if(id !== tree.id) {
         next({
-            status: err.status ? err.status : "error",
-            message: err.response ? err.response : 'Could not update new tree',
+            status: "error",
+            message: "Could not update tree",
+            details: `${req.params.id} does not match ${id}`
+    
+        });
+        return;
+     }
+     await tree.update({
+        tree: name,
+        location: location, 
+        heightFt: height,
+        groundCircumferenceFt: size
+     })
+     res.json({
+        status:"success",
+        message:"Successfully updated tree",
+        data: tree
+     })
+    } catch(err) {
+        next({
+            status: "error",
+            message: 'Could not update new tree',
             details: err.errors ? err.errors.map(item => item.message).join(', ') : err.message
         });
     }
@@ -252,9 +250,24 @@ router.put('/:id', async (req, res, next) => {
  */
 router.get('/search/:value', async (req, res, next) => {
     let trees = [];
-
-
+    try{
+  trees = await Tree.findAll({
+    attributes: ['heightFt','tree','id'],
+    where: {
+        tree: {
+            [Sequelize.Op.like] : `%${req.params.value}%`
+        }
+    }
+  })
+ 
     res.json(trees);
+} catch(err) {
+        next({
+            status: "error",
+            message: 'Could not find tree',
+            details: err.errors ? err.errors.map(item => item.message).join(', ') : err.message
+        });
+}
 });
 
 // Export class - DO NOT MODIFY
